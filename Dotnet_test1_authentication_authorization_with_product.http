@@ -1,0 +1,6 @@
+@Dotnet_test1_authentication_authorization_with_product_HostAddress = http://localhost:5296
+
+GET {{Dotnet_test1_authentication_authorization_with_product_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

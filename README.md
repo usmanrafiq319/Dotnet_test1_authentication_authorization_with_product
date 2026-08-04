@@ -1,110 +1,102 @@
-It highlights your tech stack, architecture, features, and setup instructions (including how to configure the environment variables using the appsettings.Example.json pattern we built).
+# 🛒 E-Commerce & Customer Portal Platform
 
-Markdown
-# 🛒 E-Commerce Platform
-
-A production-ready full-stack e-commerce application featuring a .NET Web API backend, an Angular frontend, an administrative product management dashboard, real-time support chat, Cloudflare R2 media storage, and secure authentication.
+A full-stack, production-ready e-commerce platform featuring an ASP.NET Core Web API backend, an Angular frontend, live customer support chat, Cloudflare R2 media storage, AI integration, and secure authentication.
 
 ---
 
 ## 🚀 Features
 
-* **Authentication & Security:** Secure JWT & cookie-based authentication, user roles (Admin/Customer), and OTP email verification for user operations.
-* **Admin Dashboard:** Complete CRUD management for products, inventory tracking, and media uploads.
-* **Live Support Chat:** Real-time messaging between customers and admin/support representatives powered by ASP.NET Core SignalR.
-* **Cloud Storage Integration:** Fast and scalable image hosting using Cloudflare R2 object storage.
-* **AI Integration:** Integrated Groq API for AI-assisted capabilities and dynamic responses.
-* **Responsive Frontend:** Modern, scalable client application built with Angular.
+* **Authentication & Authorization:** Secure JWT and cookie-based authentication with role management (Admin/User) and OTP email verification.
+* **Product Dashboard:** Complete CRUD functionality for product management, inventory tracking, and image uploads.
+* **Live Support Chat:** Real-time messaging hub between customers and admin representatives powered by ASP.NET Core SignalR.
+* **Cloud Media Storage:** Fast and scalable product image hosting powered by Cloudflare R2 object storage.
+* **AI Integration:** Integrated Groq API (`llama-3.1-8b-instant`) for dynamic AI support and backend automation.
+* **Modern Frontend:** Single Page Application (SPA) built with Angular and TypeScript.
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Backend
-* **Framework:** ASP.NET Core Web API
+### Backend (.NET)
+* **Framework:** ASP.NET Core Web API (.NET 8+)
 * **Database:** SQL Server / Entity Framework Core
-* **Real-time Communication:** SignalR
-* **Storage:** Cloudflare R2 (Amazon S3 Compatible API)
-* **Email Service:** SMTP / Gmail API with OTP support
-* **AI Services:** Groq API (`llama-3.1-8b-instant`)
+* **Real-time Services:** SignalR
+* **Storage Provider:** Cloudflare R2 (Amazon S3-compatible API)
+* **Email & Security:** SMTP / Gmail App Passwords & OTP logic
+* **AI Integration:** Groq API
 
-### Frontend
+### Frontend (Angular)
 * **Framework:** Angular
-* **Language:** TypeScript
-* **Styling:** CSS3 / SCSS / Tailwind CSS
+* **Languages:** TypeScript, HTML5, CSS3/SCSS, Tailwind
+* **HTTP Client:** Angular `HttpClient` & SignalR Client library
 
 ---
 
 ## 📁 Repository Structure
 
 ```text
-├── backend/                  # ASP.NET Core Web API Solution
-│   ├── Controllers/          # API Endpoints
-│   ├── Hubs/                 # SignalR Chat Hubs
-│   ├── Services/             # Business Logic & External API Integrations
-│   ├── appsettings.Example.json # Configuration Template (No Secrets)
-│   └── Program.cs
-├── frontend/                 # Angular Client Application
-│   ├── src/
-│   │   ├── app/              # Components, Services, and Guards
-│   │   └── assets/
+Dotnet_test1_authentication_authorization_with_product/
+│
+├── angular-ecom-frontend/     # Angular Client Application (VS Code)
+│   ├── src/                  # Components, Services, and Guards
+│   ├── package.json
 │   └── angular.json
+│
+├── Controllers/               # ASP.NET Core API Endpoints (Visual Studio)
+├── Hubs/                      # SignalR Real-Time Chat Hubs
+├── Services/                  # Core Business Logic & External API Services
+├── Properties/                # Launch settings and environment configs
+├── appsettings.Example.json   # Configuration template (No real secrets)
+├── Program.cs                 # API Startup and Dependency Injection
+├── .gitignore
 └── README.md
 ⚙️ Getting Started
 Prerequisites
 .NET 8 SDK or higher
 
-Node.js (v18 or higher) and npm
+Node.js (v18 or higher) & npm
 
 Angular CLI (npm install -g @angular/cli)
 
-SQL Server (Express or LocalDB)
+SQL Server Express / LocalDB
 
 🔧 Installation & Setup
 1. Clone the Repository
 Bash
-git clone [https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git](https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git)
-cd YOUR_REPOSITORY_NAME
+git clone [https://github.com/usmanrafiq319/Dotnet_test1_authentication_authorization_with_product.git](https://github.com/usmanrafiq319/Dotnet_test1_authentication_authorization_with_product.git)
+cd Dotnet_test1_authentication_authorization_with_product
 2. Backend Setup (.NET)
-Navigate to the backend directory:
+Open the backend project in Visual Studio or your preferred editor.
 
-Bash
-cd backend
-Create your local configuration file by copying appsettings.Example.json:
-
-Bash
-cp appsettings.Example.json appsettings.json
-Set your secret keys securely using User Secrets (recommended for local development):
+Initialize and configure local secrets using .NET User Secrets (so sensitive keys stay off Git):
 
 Bash
 dotnet user-secrets init
-dotnet user-secrets set "AppSettings:Token" "YourSuperSecretJWTKeyHere"
-dotnet user-secrets set "EmailSettings:Password" "YourGmailAppPassword"
-dotnet user-secrets set "R2Storage:AccessKeyId" "YourR2AccessKey"
-dotnet user-secrets set "R2Storage:SecretAccessKey" "YourR2SecretKey"
-dotnet user-secrets set "Groq:ApiKey" "YourGroqApiKey"
-Apply database migrations:
+dotnet user-secrets set "AppSettings:Token" "YOUR_JWT_SECRET_KEY"
+dotnet user-secrets set "EmailSettings:Password" "YOUR_GMAIL_APP_PASSWORD"
+dotnet user-secrets set "R2Storage:AccessKeyId" "YOUR_R2_ACCESS_KEY"
+dotnet user-secrets set "R2Storage:SecretAccessKey" "YOUR_R2_SECRET_KEY"
+dotnet user-secrets set "Groq:ApiKey" "YOUR_GROQ_API_KEY"
+Apply Entity Framework migrations to update your local database:
 
 Bash
 dotnet ef database update
-Run the backend server:
+Run the API (press F5 in Visual Studio or execute dotnet run).
 
-Bash
-dotnet run
 3. Frontend Setup (Angular)
-Open a new terminal and navigate to the frontend directory:
+Navigate to the Angular project directory:
 
 Bash
-cd frontend
-Install npm dependencies:
+cd angular-ecom-frontend
+Install dependencies:
 
 Bash
 npm install
-Start the Angular development server:
+Start the Angular dev server:
 
 Bash
 ng serve
-Navigate to http://localhost:4200/ in your browser.
+Open your browser and go to http://localhost:4200.
 
-🔒 Security Note
-No sensitive credentials, API keys, or access tokens are stored in this repository. All sensitive configuration keys are managed via environment variables and .NET User Secrets in development.
+🔒 Security & Privacy Note
+No sensitive API credentials, access tokens, or private keys are stored in this repository. Local development relies on .NET User Secrets and .gitignore policies to ensure configurations remain private.

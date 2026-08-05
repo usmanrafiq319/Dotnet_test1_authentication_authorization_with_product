@@ -41,12 +41,6 @@ A modern, full-stack e-commerce platform featuring an ASP.NET Core Web API backe
 
 ```text
 Dotnet_test1_authentication_authorization_with_product/
-│
-├── angular-ecom-frontend/     # Angular Client Application + Tailwind CSS
-│   ├── src/                  # Components, Services, and Guards
-│   ├── package.json
-│   └── tailwind.config.js
-│
 ├── Controllers/               # ASP.NET Core API Endpoints
 ├── Hubs/                      # SignalR Real-Time Chat Hubs
 ├── Services/                  # Core Business Logic (MailKit, R2 Storage, Groq)
@@ -58,10 +52,6 @@ Dotnet_test1_authentication_authorization_with_product/
 ⚙️ Getting Started
 Prerequisites
 .NET 10 SDK (or .NET 8+)
-
-Node.js (v18 or higher) & npm
-
-Angular CLI (npm install -g @angular/cli)
 
 SQL Server Express / LocalDB
 
@@ -89,21 +79,6 @@ dotnet ef database update
 Run the API (press F5 in Visual Studio or execute dotnet run).
 
 Open your browser to view the Scalar API Docs at /scalar/v1.
-
-3. Frontend Setup (Angular + Tailwind)
-Navigate to the Angular project directory:
-
-Bash
-cd angular-ecom-frontend
-Install dependencies:
-
-Bash
-npm install
-Start the Angular dev server:
-
-Bash
-ng serve
-Open your browser and go to http://localhost:4200.
 
 🔒 Security & Privacy Note
 No sensitive API credentials, access tokens, or private keys are stored in this repository. Local development relies on .NET User Secrets and .gitignore policies to ensure configurations remain private.

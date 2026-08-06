@@ -121,7 +121,7 @@ ipch/
 # Visual Studio Trace Files
 *.e2e
 
-# TFS 2012 Local Workspace
+# TFS 2012 Local Workspace`
 $tf/
 
 # Guidance Automation Toolkit
@@ -361,8 +361,3 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-
-# Angular / Node ignored files
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/

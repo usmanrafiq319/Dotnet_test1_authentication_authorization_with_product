@@ -111,9 +111,7 @@ builder.Services.AddCors(options =>
         options.AddPolicy("AllowAngular", policy =>
         {
             policy.WithOrigins(
-                    "http://localhost:4200",
-                    "http://localhost:4201",
-                    "http://localhost:3000"
+                    "http://localhost:4200/"
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
@@ -125,13 +123,11 @@ builder.Services.AddCors(options =>
         options.AddPolicy("AllowAngular", policy =>
         {
             policy.WithOrigins(
-                    "https://yourdomain.com",
-                    "https://www.yourdomain.com",
-                    "https://api.yourdomain.com"
-                )
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+                "https://myshop.vercel.app"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
         });
     }
 });
@@ -140,11 +136,10 @@ builder.Services.AddCors(options =>
 // DATABASE 
 // ============================================
 builder.Services.AddDbContext<UserDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("UserDatabase"))
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("UserDatabase")
+    )
 );
-
-
-
 
 // ============================================
 // CACHE Storage for otp

@@ -105,33 +105,29 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
 // ============================================
 builder.Services.AddCors(options =>
 {
-    // In development, allow localhost sources with credentials
     if (builder.Environment.IsDevelopment())
     {
         options.AddPolicy("AllowAngular", policy =>
         {
-            policy.WithOrigins(
-                    "http://localhost:4200/"
-                )
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+            policy.WithOrigins("http://localhost:4200") // Removed trailing slash
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
     }
-    else // In production, ONLY allow your actual domains
+    else
     {
         options.AddPolicy("AllowAngular", policy =>
         {
             policy.WithOrigins(
-                "https://myshop.vercel.app"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+                    "https://figma-ecom-mu.vercel.app" // Your actual Vercel domain
+                  )
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
     }
 });
-
 // ============================================
 // DATABASE 
 // ============================================

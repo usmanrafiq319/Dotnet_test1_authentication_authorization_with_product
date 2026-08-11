@@ -312,7 +312,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             {
                 HttpOnly = true,                                     // Blocks client-side JavaScript access
                 Secure = true,                                       // Forces cookie over HTTPS connections only
-                SameSite = SameSiteMode.None,                        // Required if Angular & API run on different ports/domains
+                SameSite = SameSiteMode.Unspecified,
                 Expires = DateTimeOffset.UtcNow.AddDays(7)            // Match your refresh token expiration time
             };
 

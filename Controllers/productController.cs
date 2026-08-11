@@ -2,52 +2,71 @@
 using Dotnet_test1_authentication_authorization_with_product.Data;
 using Dotnet_test1_authentication_authorization_with_product.Entities;
 using Dotnet_test1_authentication_authorization_with_product.Models;
+using Dotnet_test1_authentication_authorization_with_product.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 {
-
-
     [ApiController]
     [Route("api/[controller]")]
-    public class productController(UserDbContext context) : ControllerBase
+    public class productController(UserDbContext context, IR2ImageService r2ImageService) : ControllerBase
     {
         private readonly UserDbContext _context = context;
+        private readonly IR2ImageService _r2ImageService = r2ImageService;
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<ActionResult<ProductDto>> CreatProduct(ProductDto product)
+        public async Task<ActionResult<ProductDto>> CreatProduct([FromForm] CreateProductDto request)
         {
-            // Use AnyAsync to avoid blocking threads while checking existing products
-            if (await _context.Products.AnyAsync(item => item.Title == product.Title))
+            if (await _context.Products.AnyAsync(item => item.Title == request.Title))
             {
-                return BadRequest("product title already exist");
+                return BadRequest("Product title already exists.");
             }
 
-            var saveproduct = new Product
+            string imageUrl = string.Empty;
+
+            // Upload image to Cloudflare R2 under "products" folder if provided
+            if (request.Image != null && request.Image.Length > 0)
             {
-                Title = product.Title,
-                Description = product.Description,
-                Quantity = product.Quantity,
-                Price = product.Price,
-                Url = product.Url
+                try
+                {
+                    imageUrl = await _r2ImageService.UploadImageAsync(request.Image, "products");
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, $"Image upload failed: {ex.Message}");
+                }
+            }
+
+            var saveProduct = new Product
+            {
+                Title = request.Title,
+                Description = request.Description,
+                Quantity = request.Quantity,
+                Price = request.Price,
+                Url = imageUrl
             };
 
-            _context.Products.Add(saveproduct);
-
-            // Await the asynchronous database save operation
+            _context.Products.Add(saveProduct);
             await _context.SaveChangesAsync();
 
-            ProductDto productDto = new ProductDto()
+            var productDto = new ProductDto
             {
-                Id = saveproduct.Id,
-                Title = product.Title,
-                Description = product.Description,
-                Quantity = product.Quantity,
-                Price = product.Price,
-                Url = product.Url
+                Id = saveProduct.Id,
+                Title = saveProduct.Title,
+                Description = saveProduct.Description,
+                Quantity = saveProduct.Quantity,
+                Price = saveProduct.Price,
+                Url = saveProduct.Url
             };
 
             return Ok(productDto);
@@ -56,71 +75,105 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         [HttpGet]
         public async Task<ActionResult<List<ProductDto>>> GetAllProduct()
         {
-            // Use ToListAsync to fetch the dataset asynchronously
             var list = await _context.Products.ToListAsync();
 
             if (list is null || list.Count == 0)
             {
-                return BadRequest("no item found");
+                return BadRequest("No items found.");
             }
 
             return Ok(list);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         public async Task<ActionResult<ProductDto>> GetSingleProduct(Guid id)
         {
-            // Use FindAsync for primary key lookups asynchronously
             var product = await _context.Products.FindAsync(id);
 
             if (product is null)
             {
-                return BadRequest("the product with this id doesnt exist");
+                return BadRequest("The product with this ID does not exist.");
             }
 
             return Ok(product);
         }
 
         [Authorize(Roles = "Admin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProduct(int id)
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteProduct(Guid id)
         {
-            // Note: If your Product entity uses a Guid primary key, you should change 'int id' to 'Guid id'
-            var deleted = await _context.Products.FindAsync(id);
+            var product = await _context.Products.FindAsync(id);
 
-            if (deleted is null)
+            if (product is null)
             {
-                return BadRequest("can't delete casue this product dont exists");
+                return BadRequest("Can't delete because this product does not exist.");
             }
 
-            _context.Products.Remove(deleted);
+            // Remove image from Cloudflare R2 if present
+            if (!string.IsNullOrEmpty(product.Url))
+            {
+                await _r2ImageService.DeleteImageAsync(product.Url);
+            }
+
+            _context.Products.Remove(product);
             await _context.SaveChangesAsync();
 
-            return Ok("product deleted successfully");
+            return Ok("Product deleted successfully.");
         }
 
         [Authorize(Roles = "Admin")]
-        [HttpPut("{id}")]
-        public async Task<ActionResult<ProductDto>> EditProduct(int id, ProductDto request)
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<ProductDto>> EditProduct(Guid id, [FromForm] CreateProductDto request)
         {
-            // Note: If your Product entity uses a Guid primary key, you should change 'int id' to 'Guid id'
-            var updatedProduct = await _context.Products.FindAsync(id);
+            var existingProduct = await _context.Products.FindAsync(id);
 
-            if (updatedProduct is null)
+            if (existingProduct is null)
             {
-                return BadRequest("product dont exist");
+                return BadRequest("Product does not exist.");
             }
 
-            updatedProduct.Title = request.Title;
-            updatedProduct.Url = request.Url;
-            updatedProduct.Description = request.Description;
-            updatedProduct.Price = request.Price;
-            updatedProduct.Quantity = request.Quantity;
+            // Handle optional image update
+            if (request.Image != null && request.Image.Length > 0)
+            {
+                try
+                {
+                    // Delete the old image from R2 if it exists
+                    if (!string.IsNullOrEmpty(existingProduct.Url))
+                    {
+                        await _r2ImageService.DeleteImageAsync(existingProduct.Url);
+                    }
+
+                    // Upload the new replacement image
+                    existingProduct.Url = await _r2ImageService.UploadImageAsync(request.Image, "products");
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, $"Image upload failed: {ex.Message}");
+                }
+            }
+
+            existingProduct.Title = request.Title;
+            existingProduct.Description = request.Description;
+            existingProduct.Price = request.Price;
+            existingProduct.Quantity = request.Quantity;
 
             await _context.SaveChangesAsync();
 
-            return Ok(updatedProduct);
+            var updatedDto = new ProductDto
+            {
+                Id = existingProduct.Id,
+                Title = existingProduct.Title,
+                Description = existingProduct.Description,
+                Quantity = existingProduct.Quantity,
+                Price = existingProduct.Price,
+                Url = existingProduct.Url
+            };
+
+            return Ok(updatedDto);
         }
     }
-
 }

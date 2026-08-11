@@ -4,6 +4,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Dotnet_test1_authentication_authorization_with_product.Configuration;
+using Dotnet_test1_authentication_authorization_with_product.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using System;
@@ -88,37 +89,25 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             }
         }
 
-        public async Task<Stream> GetImageStreamAsync(string imageUrl)
+        // 2. Your single Service Method
+        public async Task<R2ImageResponseDto> GetImageAsync(string imageUrl)
         {
-            if (string.IsNullOrEmpty(imageUrl))
-                throw new ArgumentNullException(nameof(imageUrl));
+            var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
+            var request = new GetObjectRequest { BucketName = _options.BucketName, Key = key };
 
-            try
+            // This single call gets BOTH the bytes and the content type metadata
+            var response = await _s3Client.GetObjectAsync(request);
+
+            var memoryStream = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            return new R2ImageResponseDto
             {
-                // Service handles converting the public URL back into an internal storage key
-                var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
-
-                var request = new GetObjectRequest
-                {
-                    BucketName = _options.BucketName,
-                    Key = key
-                };
-
-                var response = await _s3Client.GetObjectAsync(request);
-
-                // MemoryStream is safe here, it passes ownership out to the controller
-                var memoryStream = new MemoryStream();
-                await response.ResponseStream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-
-                return memoryStream;
-            }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                throw new FileNotFoundException($"Image key not found in storage bucket.", imageUrl);
-            }
+                Stream = memoryStream,
+                ContentType = response.Headers.ContentType ?? "image/jpeg"
+            };
         }
-
 
         public async Task<GetObjectResponse> GetImageResponseAsync(string imageUrl)
         {
@@ -222,35 +211,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             }
         }
 
-        public async Task<object> GetImageMetadataAsync(string imageUrl)
-        {
-            try
-            {
-                var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
 
-                var request = new GetObjectMetadataRequest
-                {
-                    BucketName = _options.BucketName,
-                    Key = key
-                };
-
-                var response = await _s3Client.GetObjectMetadataAsync(request);
-
-                return new
-                {
-                    ContentType = response.Headers.ContentType,
-                    ContentLength = response.ContentLength,
-                    ETag = response.ETag,
-                    LastModified = response.LastModified,
-                    Metadata = response.Metadata
-                };
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to get metadata: {ex.Message}", ex);
-            }
-        }
-    
     }
 
 }

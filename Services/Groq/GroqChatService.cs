@@ -6,8 +6,7 @@ using static Dotnet_test1_authentication_authorization_with_product.Services.Gro
 
 namespace Dotnet_test1_authentication_authorization_with_product.Services.Groq
 {
-    public sealed class GroqChatService
-        : IGroqChatService
+    public sealed class GroqChatService : IGroqChatService
     {
         private readonly HttpClient _httpClient;
         private readonly GroqOptions _options;

@@ -17,10 +17,9 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
     public class R2ImageService(IAmazonS3 s3Client, IOptions<R2Storage> options) : IR2ImageService
     {
+
         private readonly IAmazonS3 _s3Client= s3Client;
         private readonly R2Storage _options= options.Value;
-
-
 
         public async Task<string> UploadImageAsync(IFormFile file, string folder = "products")
         {
@@ -91,8 +90,12 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
         public async Task<Stream> GetImageStreamAsync(string imageUrl)
         {
+            if (string.IsNullOrEmpty(imageUrl))
+                throw new ArgumentNullException(nameof(imageUrl));
+
             try
             {
+                // Service handles converting the public URL back into an internal storage key
                 var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
 
                 var request = new GetObjectRequest
@@ -103,24 +106,19 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
                 var response = await _s3Client.GetObjectAsync(request);
 
-                // Create a memory stream to hold the image data
+                // MemoryStream is safe here, it passes ownership out to the controller
                 var memoryStream = new MemoryStream();
                 await response.ResponseStream.CopyToAsync(memoryStream);
                 memoryStream.Position = 0;
 
-                // DO NOT close/dispose the response or stream here
-                // The framework will handle it
                 return memoryStream;
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                throw new FileNotFoundException($"Image not found: {imageUrl}");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to get image stream: {ex.Message}");
+                throw new FileNotFoundException($"Image key not found in storage bucket.", imageUrl);
             }
         }
+
 
         public async Task<GetObjectResponse> GetImageResponseAsync(string imageUrl)
         {
@@ -252,6 +250,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                 throw new Exception($"Failed to get metadata: {ex.Message}", ex);
             }
         }
+    
     }
 
 }

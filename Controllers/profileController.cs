@@ -42,16 +42,11 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         {
             try
             {
-
                 var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!Guid.TryParse(userIdClaim, out var userId))
                 {
                     return Unauthorized(new { error = "Invalid user ID" });
                 }
-                _logger.LogInformation("GetAvatar called");
-
-                _logger.LogInformation($"UserId claim: {userIdClaim}");
-
 
                 var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
                 if (profile == null || string.IsNullOrEmpty(profile.ImageUrl))
@@ -59,55 +54,29 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                     return NotFound(new { error = "Profile or avatar image not found" });
                 }
 
-                // Extract the relative storage key from full Public URL structure
-                string objectKey = profile.ImageUrl.Replace($"{_r2Options.PublicUrl}/", "");
+                // 1. Single service call fetches BOTH the binary stream and the Content-Type header
+                var r2Response = await _r2ImageService.GetImageAsync(profile.ImageUrl);
 
-                // Get the image stream from R2 - DO NOT USE 'using' HERE
-                var imageStream = await _r2ImageService.GetImageStreamAsync(profile.ImageUrl);
-
-                if (imageStream == null || imageStream.Length == 0)
+                if (r2Response?.Stream == null || r2Response.Stream.Length == 0)
                 {
                     return NotFound(new { error = "Image data is empty" });
                 }
 
-                // Reset stream position to beginning
-                imageStream.Position = 0;
+                // 2. Safely read properties from your new DTO payload
+                var imageStream = r2Response.Stream;
+                var contentType = r2Response.ContentType;
 
-                // Get metadata to determine content type
-                var metadata = await _r2ImageService.GetImageMetadataAsync(profile.ImageUrl);
-                var contentType = "image/jpeg"; // Default fallback
-
-                if (metadata != null)
-                {
-                    // Extract content type from metadata
-                    var metadataDict = metadata as dynamic;
-                    if (metadataDict != null)
-                    {
-                        var ct = metadataDict?.ContentType as string;
-                        if (!string.IsNullOrEmpty(ct))
-                        {
-                            contentType = ct;
-                        }
-                    }
-                }
-
-                // Return the image file - the stream will be disposed by the framework
+                // 3. Return the image file — ASP.NET Core automatically disposes of the stream
                 return File(imageStream, contentType);
-            }
-            catch (FileNotFoundException)
-            {
-                return NotFound(new { error = "Image file not found in storage" });
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                return NotFound(new { error = "Image not found in bucket" });
+                return NotFound(new { error = "Image file not found in storage" });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Avatar stream error: {ex.Message}");
                 _logger.LogError($"GetAvatar error: {ex.Message}");
-                _logger.LogError($"Stack trace: {ex.StackTrace}");
-                return StatusCode(500, new { error = ex.Message, stack = ex.StackTrace });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 

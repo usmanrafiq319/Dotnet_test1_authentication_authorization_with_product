@@ -1,4 +1,5 @@
 ﻿using Amazon.S3.Model;
+using Dotnet_test1_authentication_authorization_with_product.Models;
 
 namespace Dotnet_test1_authentication_authorization_with_product.Services
 {
@@ -9,7 +10,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
         Task<bool> DeleteImageAsync(string imageUrl);
         Task<bool> ImageExistsAsync(string imageUrl);
         Task<List<string>> ListImagesAsync(string folder = "products");
-        Task<object> GetImageMetadataAsync(string imageUrl);
+        Task<ImageMetadataResultDto> GetImageMetadataAsync(string imageUrl);
         Task<Stream> GetImageStreamAsync(string imageUrl);
         Task<GetObjectResponse> GetImageResponseAsync(string imageUrl);
     }

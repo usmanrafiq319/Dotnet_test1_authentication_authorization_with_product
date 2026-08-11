@@ -2,6 +2,7 @@ using Amazon.S3;
 using Dotnet_test1_authentication_authorization_with_product.Configuration;
 using Dotnet_test1_authentication_authorization_with_product.Data;
 using Dotnet_test1_authentication_authorization_with_product.Entities;
+using Microsoft.AspNetCore.HttpOverrides; 
 using Dotnet_test1_authentication_authorization_with_product.Hubs;
 using Dotnet_test1_authentication_authorization_with_product.Services;
 using Dotnet_test1_authentication_authorization_with_product.Services.Chat;
@@ -41,6 +42,14 @@ builder.Services
         "Groq API key is required."
     )
     .ValidateOnStart();
+
+// Add Forwarded Headers Configuration
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // ============================================
 // Register business services
@@ -120,7 +129,7 @@ builder.Services.AddCors(options =>
         options.AddPolicy("AllowAngular", policy =>
         {
             policy.WithOrigins(
-                    "https://figma-ecom-mu.vercel.app" // Your actual Vercel domain
+                    "https://figma-ecom-mu.vercel.app/" // Your actual Vercel domain
                   )
                   .AllowAnyHeader()
                   .AllowAnyMethod()

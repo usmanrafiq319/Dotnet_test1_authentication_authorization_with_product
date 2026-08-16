@@ -1,5 +1,4 @@
 ﻿using Amazon.S3;
-using Amazon.S3.Model;
 using Dotnet_test1_authentication_authorization_with_product.Configuration;
 using Dotnet_test1_authentication_authorization_with_product.Data;
 using Dotnet_test1_authentication_authorization_with_product.Entities;
@@ -15,7 +14,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-
     public class ProfileController : ControllerBase
     {
         private readonly UserDbContext _context;
@@ -44,30 +42,26 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             {
                 var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!Guid.TryParse(userIdClaim, out var userId))
-                {
-                    return Unauthorized(new { error = "Invalid user ID" });
-                }
+                    return Unauthorized(new { error = "Invalid user ID token" });
 
                 var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
                 if (profile == null || string.IsNullOrEmpty(profile.ImageUrl))
-                {
                     return NotFound(new { error = "Profile or avatar image not found" });
+
+                // Handle external Google OAuth links directly
+                if (profile.ImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) &&
+                   !profile.ImageUrl.Contains(_r2Options.PublicUrl))
+                {
+                    return Redirect(profile.ImageUrl);
                 }
 
-                // 1. Single service call fetches BOTH the binary stream and the Content-Type header
+                // R2ImageService extracts the object key internally
                 var r2Response = await _r2ImageService.GetImageAsync(profile.ImageUrl);
 
                 if (r2Response?.Stream == null || r2Response.Stream.Length == 0)
-                {
-                    return NotFound(new { error = "Image data is empty" });
-                }
+                    return NotFound(new { error = "Image stream is empty" });
 
-                // 2. Safely read properties from your new DTO payload
-                var imageStream = r2Response.Stream;
-                var contentType = r2Response.ContentType;
-
-                // 3. Return the image file — ASP.NET Core automatically disposes of the stream
-                return File(imageStream, contentType);
+                return File(r2Response.Stream, r2Response.ContentType);
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -94,20 +88,17 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 }
 
                 var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
-
                 if (profile == null)
                 {
                     return NotFound("Profile not found. Please create one.");
                 }
 
-                var dto = new ProfileDto
+                return Ok(new ProfileDto
                 {
                     Id = profile.Id,
                     Email = profile.Email,
                     ImageUrl = profile.ImageUrl
-                };
-
-                return Ok(dto);
+                });
             }
             catch (Exception ex)
             {
@@ -145,19 +136,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                     return BadRequest("Please upload a profile image.");
                 }
 
-                string uploadedImageUrl;
-                try
-                {
-                    uploadedImageUrl = await _r2ImageService.UploadImageAsync(profile.Image, folder: "avatars");
-                }
-                catch (ArgumentException ex)
-                {
-                    return BadRequest(ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, $"Failed to upload image to Cloudflare: {ex.Message}");
-                }
+                string uploadedImageUrl = await _r2ImageService.UploadImageAsync(profile.Image, folder: "avatars");
 
                 var userProfile = new Profile
                 {
@@ -169,14 +148,16 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 _context.Profiles.Add(userProfile);
                 await _context.SaveChangesAsync();
 
-                var responseDto = new ProfileDto
+                return Ok(new ProfileDto
                 {
                     Id = userProfile.Id,
                     Email = userProfile.Email,
                     ImageUrl = userProfile.ImageUrl
-                };
-
-                return Ok(responseDto);
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -213,32 +194,22 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
                 string uploadedImageUrl = existingProfile.ImageUrl;
 
-                try
+                if (profile.Image != null && profile.Image.Length > 0)
                 {
-                    if (profile.Image != null && profile.Image.Length > 0)
+                    if (!string.IsNullOrEmpty(existingProfile.ImageUrl))
                     {
-                        if (!string.IsNullOrEmpty(existingProfile.ImageUrl))
+                        try
                         {
-                            try
-                            {
-                                await _r2ImageService.DeleteImageAsync(existingProfile.ImageUrl);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning($"Failed to delete old image: {ex.Message}");
-                            }
+                            // Pass the stored URL directly; R2ImageService cleans the key
+                            await _r2ImageService.DeleteImageAsync(existingProfile.ImageUrl);
                         }
-
-                        uploadedImageUrl = await _r2ImageService.UploadImageAsync(profile.Image, folder: "avatars");
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning($"Failed to delete old image: {ex.Message}");
+                        }
                     }
-                }
-                catch (ArgumentException ex)
-                {
-                    return BadRequest(ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, $"Failed to process image: {ex.Message}");
+
+                    uploadedImageUrl = await _r2ImageService.UploadImageAsync(profile.Image, folder: "avatars");
                 }
 
                 existingProfile.Email = profile.Email ?? existingProfile.Email;
@@ -246,14 +217,16 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
                 await _context.SaveChangesAsync();
 
-                var responseDto = new ProfileDto
+                return Ok(new ProfileDto
                 {
                     Id = existingProfile.Id,
                     Email = existingProfile.Email,
                     ImageUrl = existingProfile.ImageUrl
-                };
-
-                return Ok(responseDto);
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -285,6 +258,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 {
                     try
                     {
+                        // Pass stored URL directly
                         await _r2ImageService.DeleteImageAsync(profile.ImageUrl);
                     }
                     catch (Exception ex)
@@ -305,15 +279,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             }
         }
     }
-
-
-
-
 }
-
-
-
-
 
 
 

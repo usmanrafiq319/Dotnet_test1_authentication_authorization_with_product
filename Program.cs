@@ -43,14 +43,6 @@ builder.Services
     )
     .ValidateOnStart();
 
-// Add Forwarded Headers Configuration
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownNetworks.Clear();
-    options.KnownProxies.Clear();
-});
-
 // ============================================
 // Register business services
 // ============================================
@@ -129,7 +121,7 @@ builder.Services.AddCors(options =>
         options.AddPolicy("AllowAngular", policy =>
         {
             policy.WithOrigins(
-                    "https://figma-ecom-mu.vercel.app/" // Your actual Vercel domain
+                    "https://figma-ecom-mu.vercel.app" // Your actual Vercel domain
                   )
                   .AllowAnyHeader()
                   .AllowAnyMethod()

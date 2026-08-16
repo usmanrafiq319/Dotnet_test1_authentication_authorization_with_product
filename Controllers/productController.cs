@@ -1,13 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Dotnet_test1_authentication_authorization_with_product.Data;
+﻿using Dotnet_test1_authentication_authorization_with_product.Data;
 using Dotnet_test1_authentication_authorization_with_product.Entities;
 using Dotnet_test1_authentication_authorization_with_product.Models;
 using Dotnet_test1_authentication_authorization_with_product.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Dotnet_test1_authentication_authorization_with_product.Controllers
@@ -19,9 +20,9 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         private readonly UserDbContext _context = context;
         private readonly IR2ImageService _r2ImageService = r2ImageService;
 
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<ActionResult<ProductDto>> CreatProduct([FromForm] CreateProductDto request)
+        public async Task<ActionResult<ProductDto>> CreatProduct( CreateProductDto request)
         {
             if (await _context.Products.AnyAsync(item => item.Title == request.Title))
             {
@@ -30,11 +31,11 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
             string imageUrl = string.Empty;
 
-            // Upload image to Cloudflare R2 under "products" folder if provided
             if (request.Image != null && request.Image.Length > 0)
             {
                 try
                 {
+                    // Uploads binary file directly to R2 under 'products/' prefix
                     imageUrl = await _r2ImageService.UploadImageAsync(request.Image, "products");
                 }
                 catch (ArgumentException ex)
@@ -59,17 +60,15 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             _context.Products.Add(saveProduct);
             await _context.SaveChangesAsync();
 
-            var productDto = new ProductDto
+            return Ok(new ProductDto
             {
                 Id = saveProduct.Id,
                 Title = saveProduct.Title,
                 Description = saveProduct.Description,
                 Quantity = saveProduct.Quantity,
                 Price = saveProduct.Price,
-                Url = saveProduct.Url
-            };
-
-            return Ok(productDto);
+                Url = GetProductImageUrl(saveProduct.Id, saveProduct.Url)
+            });
         }
 
         [HttpGet]
@@ -79,10 +78,20 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
             if (list is null || list.Count == 0)
             {
-                return BadRequest("No items found.");
+                return NotFound("No products found.");
             }
 
-            return Ok(list);
+            var productDtos = list.Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Title = p.Title,
+                Description = p.Description,
+                Quantity = p.Quantity,
+                Price = p.Price,
+                Url = GetProductImageUrl(p.Id, p.Url)
+            }).ToList();
+
+            return Ok(productDtos);
         }
 
         [HttpGet("{id:guid}")]
@@ -92,33 +101,45 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
             if (product is null)
             {
-                return BadRequest("The product with this ID does not exist.");
+                return NotFound("The product with this ID does not exist.");
             }
 
-            return Ok(product);
+            return Ok(new ProductDto
+            {
+                Id = product.Id,
+                Title = product.Title,
+                Description = product.Description,
+                Quantity = product.Quantity,
+                Price = product.Price,
+                Url = GetProductImageUrl(product.Id, product.Url)
+            });
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id:guid}")]
-        public async Task<IActionResult> DeleteProduct(Guid id)
+        // GET: api/product/{id}/image - Streams binary image content directly from Cloudflare R2
+        [HttpGet("{id:guid}/image")]
+        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any, NoStore = false)]
+        public async Task<IActionResult> GetProductImage(Guid id)
         {
             var product = await _context.Products.FindAsync(id);
-
-            if (product is null)
+            if (product == null || string.IsNullOrEmpty(product.Url))
             {
-                return BadRequest("Can't delete because this product does not exist.");
+                return NotFound("Product or image reference not found.");
             }
 
-            // Remove image from Cloudflare R2 if present
-            if (!string.IsNullOrEmpty(product.Url))
+            try
             {
-                await _r2ImageService.DeleteImageAsync(product.Url);
+                var r2Response = await _r2ImageService.GetImageAsync(product.Url);
+                if (r2Response?.Stream == null || r2Response.Stream.Length == 0)
+                {
+                    return NotFound("Image content is empty.");
+                }
+
+                return File(r2Response.Stream, r2Response.ContentType);
             }
-
-            _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
-
-            return Ok("Product deleted successfully.");
+            catch (Exception)
+            {
+                return NotFound("Product image could not be retrieved from R2 storage.");
+            }
         }
 
         [Authorize(Roles = "Admin")]
@@ -129,21 +150,19 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
             if (existingProduct is null)
             {
-                return BadRequest("Product does not exist.");
+                return NotFound("Product does not exist.");
             }
 
-            // Handle optional image update
             if (request.Image != null && request.Image.Length > 0)
             {
                 try
                 {
-                    // Delete the old image from R2 if it exists
+                    // Deletes old image from R2 before uploading new one
                     if (!string.IsNullOrEmpty(existingProduct.Url))
                     {
                         await _r2ImageService.DeleteImageAsync(existingProduct.Url);
                     }
 
-                    // Upload the new replacement image
                     existingProduct.Url = await _r2ImageService.UploadImageAsync(request.Image, "products");
                 }
                 catch (ArgumentException ex)
@@ -163,17 +182,47 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
             await _context.SaveChangesAsync();
 
-            var updatedDto = new ProductDto
+            return Ok(new ProductDto
             {
                 Id = existingProduct.Id,
                 Title = existingProduct.Title,
                 Description = existingProduct.Description,
                 Quantity = existingProduct.Quantity,
                 Price = existingProduct.Price,
-                Url = existingProduct.Url
-            };
+                Url = GetProductImageUrl(existingProduct.Id, existingProduct.Url)
+            });
+        }
 
-            return Ok(updatedDto);
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteProduct(Guid id)
+        {
+            var product = await _context.Products.FindAsync(id);
+
+            if (product is null)
+            {
+                return NotFound("Can't delete because this product does not exist.");
+            }
+
+            // Deletes the file object from R2 storage
+            if (!string.IsNullOrEmpty(product.Url))
+            {
+                await _r2ImageService.DeleteImageAsync(product.Url);
+            }
+
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
+
+            return Ok("Product and associated R2 storage asset deleted successfully.");
+        }
+
+        /// <summary>
+        /// Returns the internal API streaming URL if present, or empty string.
+        /// </summary>
+        private string GetProductImageUrl(Guid productId, string rawUrl)
+        {
+            if (string.IsNullOrEmpty(rawUrl)) return string.Empty;
+            return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image";
         }
     }
 }

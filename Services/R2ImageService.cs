@@ -1,6 +1,4 @@
-﻿using Amazon;
-using Amazon.Runtime;
-using Amazon.S3;
+﻿using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Dotnet_test1_authentication_authorization_with_product.Configuration;
@@ -15,28 +13,64 @@ using System.Threading.Tasks;
 
 namespace Dotnet_test1_authentication_authorization_with_product.Services
 {
-
-    public class R2ImageService(IAmazonS3 s3Client, IOptions<R2Storage> options) : IR2ImageService
+    public class R2ImageService : IR2ImageService
     {
+        private readonly IAmazonS3 _s3Client;
+        private readonly R2Storage _options;
 
-        private readonly IAmazonS3 _s3Client= s3Client;
-        private readonly R2Storage _options= options.Value;
+        public R2ImageService(IAmazonS3 s3Client, IOptions<R2Storage> options)
+        {
+            _s3Client = s3Client;
+            _options = options.Value;
+        }
+
+        /// <summary>
+        /// Centralized key extraction logic. Strips out PublicUrl and host details if present, 
+        /// returning clean relative object keys like "avatars/guid.jpg" or "products/guid.jpg".
+        /// </summary>
+        private string ExtractObjectKey(string imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(imageUrl)) return string.Empty;
+
+            // Handle legacy/external non-R2 links gracefully
+            if (imageUrl.Contains("gstatic.com") || imageUrl.Contains("googleusercontent.com"))
+            {
+                return imageUrl;
+            }
+
+            var key = imageUrl;
+
+            // Remove configured base public URL if present
+            if (!string.IsNullOrEmpty(_options.PublicUrl) && key.StartsWith(_options.PublicUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                key = key.Replace($"{_options.PublicUrl}/", "").Replace(_options.PublicUrl, "");
+            }
+
+            // Extract relative absolute path if full absolute URI is provided
+            if (Uri.TryCreate(key, UriKind.Absolute, out var uri))
+            {
+                key = uri.AbsolutePath;
+            }
+
+            return key.TrimStart('/');
+        }
 
         public async Task<string> UploadImageAsync(IFormFile file, string folder = "products")
         {
             if (file == null || file.Length == 0)
-                throw new ArgumentException("File is empty or null");
+                throw new ArgumentException("File is empty or null.");
 
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
-                throw new ArgumentException($"File type {file.ContentType} is not allowed");
+                throw new ArgumentException($"File type '{file.ContentType}' is not allowed.");
 
-            if (file.Length > 2 * 1024 * 1024) // 2MB
-                throw new ArgumentException("File size cannot exceed 2MB");
+            if (file.Length > 2 * 1024 * 1024) // 2MB limit
+                throw new ArgumentException("File size cannot exceed 2MB.");
 
             var extension = Path.GetExtension(file.FileName);
             var fileName = $"{Guid.NewGuid()}{extension}";
-            var key = $"{folder}/{fileName}";
+            var cleanFolder = folder.Trim('/');
+            var key = $"{cleanFolder}/{fileName}";
 
             using var memoryStream = new MemoryStream();
             await file.CopyToAsync(memoryStream);
@@ -44,28 +78,27 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
             try
             {
-                // Using PutObjectRequest which works well with Cloudflare R2
                 var putRequest = new PutObjectRequest
                 {
                     BucketName = _options.BucketName,
                     Key = key,
                     InputStream = memoryStream,
                     ContentType = file.ContentType,
-                    UseChunkEncoding = false
+                    UseChunkEncoding = false // Critical for Cloudflare R2 compatibility
                 };
 
                 var response = await _s3Client.PutObjectAsync(putRequest);
 
                 if (response.HttpStatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    return $"{_options.PublicUrl}/{key}";
+                    return $"{_options.PublicUrl.TrimEnd('/')}/{key}";
                 }
 
-                throw new Exception($"Upload failed with status: {response.HttpStatusCode}");
+                throw new Exception($"Upload failed with status code: {response.HttpStatusCode}");
             }
-            catch (AmazonS3Exception ex)
+            catch (AmazonS3Exception)
             {
-                // Fallback: Try using TransferUtility
+                // Fallback attempt using TransferUtility
                 try
                 {
                     memoryStream.Position = 0;
@@ -80,7 +113,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                     var fileTransferUtility = new TransferUtility(_s3Client);
                     await fileTransferUtility.UploadAsync(uploadRequest);
 
-                    return $"{_options.PublicUrl}/{key}";
+                    return $"{_options.PublicUrl.TrimEnd('/')}/{key}";
                 }
                 catch (Exception innerEx)
                 {
@@ -89,13 +122,19 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             }
         }
 
-        // 2. Your single Service Method
         public async Task<R2ImageResponseDto> GetImageAsync(string imageUrl)
         {
-            var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
-            var request = new GetObjectRequest { BucketName = _options.BucketName, Key = key };
+            if (string.IsNullOrWhiteSpace(imageUrl))
+                throw new ArgumentException("Image URL or key cannot be empty.");
 
-            // This single call gets BOTH the bytes and the content type metadata
+            var key = ExtractObjectKey(imageUrl);
+
+            var request = new GetObjectRequest
+            {
+                BucketName = _options.BucketName,
+                Key = key
+            };
+
             var response = await _s3Client.GetObjectAsync(request);
 
             var memoryStream = new MemoryStream();
@@ -113,7 +152,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
         {
             try
             {
-                var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
+                var key = ExtractObjectKey(imageUrl);
 
                 var request = new GetObjectRequest
                 {
@@ -121,8 +160,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                     Key = key
                 };
 
-                var response = await _s3Client.GetObjectAsync(request);
-                return response;
+                return await _s3Client.GetObjectAsync(request);
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -130,7 +168,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to get image: {ex.Message}");
+                throw new Exception($"Failed to retrieve image response: {ex.Message}");
             }
         }
 
@@ -138,7 +176,8 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
         {
             try
             {
-                var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
+                var key = ExtractObjectKey(imageUrl);
+                if (string.IsNullOrEmpty(key)) return false;
 
                 var deleteRequest = new DeleteObjectRequest
                 {
@@ -160,13 +199,16 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
         {
             try
             {
-                var key = imageUrl.Replace($"{_options.PublicUrl}/", "");
+                var key = ExtractObjectKey(imageUrl);
+                if (string.IsNullOrEmpty(key)) return false;
+
                 var request = new GetObjectMetadataRequest
                 {
                     BucketName = _options.BucketName,
                     Key = key
                 };
-                var response = await _s3Client.GetObjectMetadataAsync(request);
+
+                await _s3Client.GetObjectMetadataAsync(request);
                 return true;
             }
             catch
@@ -190,32 +232,26 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
         {
             try
             {
+                var cleanFolder = folder.Trim('/');
                 var request = new ListObjectsRequest
                 {
                     BucketName = _options.BucketName,
-                    Prefix = folder + "/"
+                    Prefix = $"{cleanFolder}/"
                 };
 
                 var response = await _s3Client.ListObjectsAsync(request);
 
                 var imageUrls = response.S3Objects
                     .Where(obj => !obj.Key.EndsWith("/"))
-                    .Select(obj => $"{_options.PublicUrl}/{obj.Key}")
+                    .Select(obj => $"{_options.PublicUrl.TrimEnd('/')}/{obj.Key}")
                     .ToList();
 
                 return imageUrls;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to list images: {ex.Message}", ex);
+                throw new Exception($"Failed to list images from folder '{folder}': {ex.Message}", ex);
             }
         }
-
-
     }
-
 }
-
-
-
-

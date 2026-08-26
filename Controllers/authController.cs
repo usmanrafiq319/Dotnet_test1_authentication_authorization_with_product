@@ -182,7 +182,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 .Replace("/", "_")
                 .Replace("=", "");
 
-            // Store in memory cache with expiration (10 minutes)
+            // Store in memory cache with expiration (3 minutes)
             var cacheOptions = new MemoryCacheEntryOptions
             {
                 AbsoluteExpiration = DateTime.UtcNow.AddMinutes(3)
@@ -227,11 +227,12 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             {
                 return BadRequest("User name already exists");
             }
-            SetRefreshTokenCookie(token.RefreshToken);
+
+            SetRefreshTokenCookie(token.RefreshToken, token.RefreshTokenExpiaryTime);
+
             AccessTokenDto accesstoken = new()
-            {
-                AccessToken = token.AccessToken
-            };
+            {AccessToken = token.AccessToken};
+
             return Ok(accesstoken);
         }
 
@@ -245,7 +246,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 return Unauthorized("Refresh token expired or user don't exists or token mismatch"); 
             }
 
-            SetRefreshTokenCookie(token.RefreshToken);
+            SetRefreshTokenCookie(token.RefreshToken,token.RefreshTokenExpiaryTime);
             AccessTokenDto accesstoken = new() { 
             AccessToken=token.AccessToken
             };
@@ -288,9 +289,25 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 return BadRequest($"need to login again refreshtoken {refreshToken}");
             }
                 // 4. (Optional) Rotate the refresh token for maximum security
-             SetRefreshTokenCookie(Token.RefreshToken);
+             SetRefreshTokenCookie(Token.RefreshToken,Token.RefreshTokenExpiaryTime);
             return Ok(Token.AccessToken);
         }
+
+        [NonAction]
+        private void SetRefreshTokenCookie(string refreshToken, DateTime refreshTokenExpiaryTime)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,                                     // Blocks client-side JavaScript access
+                Secure = true,                                       // Forces cookie over HTTPS connections only
+                SameSite = SameSiteMode.None,                        // Required if Angular & API run on different ports/domains
+                Expires = new DateTimeOffset(refreshTokenExpiaryTime,TimeSpan.Zero)
+            };
+
+            // Appends the token securely to the response headers
+            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+        }
+
 
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
@@ -305,21 +322,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             return BadRequest("already logoed out or any issue happen");
         }
 
-        [NonAction]
-        private void SetRefreshTokenCookie(string refreshToken)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,                                     // Blocks client-side JavaScript access
-                Secure = true,                                       // Forces cookie over HTTPS connections only
-                SameSite = SameSiteMode.None,                        // Required if Angular & API run on different ports/domains
-                Expires = DateTimeOffset.UtcNow.AddDays(7)            // Match your refresh token expiration time
-            };
 
-            // Appends the token securely to the response headers
-            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
-        }
-        
         [NonAction]
         private async Task<bool> ClearUserSessionAsync()
         {

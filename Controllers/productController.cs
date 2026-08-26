@@ -4,6 +4,7 @@ using Dotnet_test1_authentication_authorization_with_product.Models;
 using Dotnet_test1_authentication_authorization_with_product.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -22,7 +23,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
         //[Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<ActionResult<ProductDto>> CreatProduct( CreateProductDto request)
+        public async Task<ActionResult<ProductDto>> CreatProduct(CreateProductDto request)
         {
             if (await _context.Products.AnyAsync(item => item.Title == request.Title))
             {
@@ -54,7 +55,10 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = request.Description,
                 Quantity = request.Quantity,
                 Price = request.Price,
-                Url = imageUrl
+                Url = imageUrl,
+                Category = request.Category,
+                CreatedAt = DateTime.UtcNow
+
             };
 
             _context.Products.Add(saveProduct);
@@ -67,7 +71,9 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = saveProduct.Description,
                 Quantity = saveProduct.Quantity,
                 Price = saveProduct.Price,
-                Url = GetProductImageUrl(saveProduct.Id, saveProduct.Url)
+                Url = GetProductImageUrl(saveProduct.Id, saveProduct.Url),
+                Category = saveProduct.Category,
+                CreatedAt = saveProduct.CreatedAt
             });
         }
 
@@ -88,7 +94,10 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = p.Description,
                 Quantity = p.Quantity,
                 Price = p.Price,
-                Url = GetProductImageUrl(p.Id, p.Url)
+                Url = GetProductImageUrl(p.Id, p.Url),
+                Category = p.Category,
+                CreatedAt = p.CreatedAt
+
             }).ToList();
 
             return Ok(productDtos);
@@ -111,7 +120,9 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = product.Description,
                 Quantity = product.Quantity,
                 Price = product.Price,
-                Url = GetProductImageUrl(product.Id, product.Url)
+                Url = GetProductImageUrl(product.Id, product.Url),
+                Category = product.Category,
+                CreatedAt = product.CreatedAt
             });
         }
 
@@ -179,6 +190,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             existingProduct.Description = request.Description;
             existingProduct.Price = request.Price;
             existingProduct.Quantity = request.Quantity;
+            existingProduct.Category = request.Category;
 
             await _context.SaveChangesAsync();
 
@@ -188,8 +200,10 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Title = existingProduct.Title,
                 Description = existingProduct.Description,
                 Quantity = existingProduct.Quantity,
+                Category = existingProduct.Category,
                 Price = existingProduct.Price,
-                Url = GetProductImageUrl(existingProduct.Id, existingProduct.Url)
+                Url = GetProductImageUrl(existingProduct.Id, existingProduct.Url),
+                CreatedAt = existingProduct.CreatedAt
             });
         }
 

@@ -129,14 +129,32 @@ builder.Services.AddCors(options =>
         });
     }
 });
+
+
 // ============================================
-// DATABASE 
+// DATABASE CONFIGURATION (SQL Server local vs PostgreSQL production)
 // ============================================
 builder.Services.AddDbContext<UserDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("UserDatabase")
-    )
-);
+{
+    var assemblyName = typeof(UserDbContext).Assembly.GetName().Name;
+
+    if (builder.Environment.IsDevelopment())
+    {
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("UserDatabase"),
+            b => b.MigrationsAssembly(assemblyName)
+                  .MigrationsHistoryTable("__EFMigrationsHistory")
+        );
+    }
+    else
+    {
+        options.UseNpgsql(
+            builder.Configuration.GetConnectionString("UserDatabase"),
+            b => b.MigrationsAssembly(assemblyName)
+                  .MigrationsHistoryTable("__EFMigrationsHistory")
+        );
+    }
+});
 
 // ============================================
 // CACHE Storage for otp
@@ -254,4 +272,18 @@ if (app.Environment.IsDevelopment())
 // 6. Map API Endpoints
 app.MapControllers();
 app.MapHub<ChatHub>("/chathub");
+
+// ============================================
+// AUTOMATIC MIGRATIONS FOR PRODUCTION (Supabase)
+// ============================================
+if (!app.Environment.IsDevelopment())
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+        dbContext.Database.Migrate();
+    }
+}
+
+
 app.Run();

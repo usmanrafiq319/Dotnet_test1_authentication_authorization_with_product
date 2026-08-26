@@ -45,7 +45,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                     return Unauthorized(new { error = "Invalid user ID token" });
 
                 var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
-                if (profile == null || string.IsNullOrEmpty(profile.ImageUrl))
+                if (profile == null || string.IsNullOrEmpty(profile.ImageUrl))  
                     return NotFound(new { error = "Profile or avatar image not found" });
 
                 // Handle external Google OAuth links directly

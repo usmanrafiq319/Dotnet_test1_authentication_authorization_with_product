@@ -144,6 +144,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
             _context.Users.Add(user);
             _context.Profiles.Add(profile);
+            user.RefreshTokenExpiaryTime = DateTime.UtcNow.AddDays(7);
 
             await _context.SaveChangesAsync();
 
@@ -152,44 +153,50 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
         public async Task<TokenDto?> LoginUserAsync(UserDto request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserName);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName == request.UserName);
 
-            if(user is null )
+            if (user is null)
             {
-                return null; 
-            }
-            else if(user.RefreshTokenExpiaryTime is not null)
-            {
-                if(user.RefreshTokenExpiaryTime >= DateTime.UtcNow)
-                {
-                    return null;
-                }
+                return null;
             }
 
-            if (_passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
+            // First verify credentials
+            if (_passwordHasher.VerifyHashedPassword(
+                user,
+                user.PasswordHash,
+                request.Password
+            ) == PasswordVerificationResult.Failed)
+            {
+                return null;
+            }
+
+            // User already has an active 7-day session
+            if (user.RefreshTokenExpiaryTime is not null &&
+                user.RefreshTokenExpiaryTime > DateTime.UtcNow)
+            {
+                return null;
+            }
+
+            // Previous session expired.
+            // Start a new 7-day session.
+            user.RefreshTokenExpiaryTime = DateTime.UtcNow.AddDays(7);
+
+            await _context.SaveChangesAsync();
+
+            return await CreateFullToken(user);
+        }
+  
+        public async Task<TokenDto?> TokenRequestAsync(string request)
+        {
+            var user = await ValidatRefreshTokenAsync(request);
+
+            if (user is null)
             {
                 return null;
             }
 
             return await CreateFullToken(user);
-        }
-
-        public async Task<TokenDto?> TokenRequestAsync(string request)
-        {
-            var user = await ValidatRefreshTokenAsync(request);
-            if (user is null ) {
-                return null;
-            }
-
-            TokenDto token = new TokenDto
-            {
-                AccessToken = CreateAccessToken( user),
-                RefreshToken = await  GenrateAndSaveRefreshTokenAsync(user)
-
-            };
-
-            return token;
-
         }
 
         public async Task<bool> LogoutAsync(string request)
@@ -211,7 +218,8 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             var CompleteToken = new TokenDto
             {
                 RefreshToken = await GenrateAndSaveRefreshTokenAsync(user),
-                AccessToken = CreateAccessToken(user)
+                AccessToken = CreateAccessToken(user),
+                RefreshTokenExpiaryTime = user.RefreshTokenExpiaryTime!.Value
             };
             return CompleteToken;
         }
@@ -240,7 +248,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
         {
             var refreshToken = GenerateRefreshToken();
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiaryTime = DateTime.UtcNow.AddDays(7);
             await _context.SaveChangesAsync();
             return refreshToken;
         }

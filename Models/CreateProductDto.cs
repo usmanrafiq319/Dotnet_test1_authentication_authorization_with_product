@@ -1,26 +1,32 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualBasic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Dotnet_test1_authentication_authorization_with_product.Models
 {
     public class CreateProductDto
     {
-        [FromForm(Name = "title")]
+        //[FromForm(Name = "title")]
         [Required]
         public string Title { get; set; } = string.Empty;
 
-        [FromForm(Name = "price")]
+        //[FromForm(Name = "price")]
         [Required]
         public int Price { get; set; }
 
-        [FromForm(Name = "quantity")]
+        //[FromForm(Name = "quantity")]
         [Required]
         public int Quantity { get; set; }
 
-        [FromForm(Name = "description")]
+        //[FromForm(Name = "category")]
+        [Required]
+        public string Category { get; set; } = string.Empty;
+
+        //[FromForm(Name = "description")]
         public string Description { get; set; } = string.Empty;
 
-        [FromForm(Name = "image")]
+        //[FromForm(Name = "image")]
+        [Required]
         public IFormFile? Image { get; set; }
     }
 }

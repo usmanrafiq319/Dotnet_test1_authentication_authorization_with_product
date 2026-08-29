@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dotnet_test1_authentication_authorization_with_product.Migrations.Postgres
 {
     [DbContext(typeof(PostgresDbContext))]
-    [Migration("20260828234930_InitialPostgresCreate")]
+    [Migration("20260829205135_InitialPostgresCreate")]
     partial class InitialPostgresCreate
     {
         /// <inheritdoc />

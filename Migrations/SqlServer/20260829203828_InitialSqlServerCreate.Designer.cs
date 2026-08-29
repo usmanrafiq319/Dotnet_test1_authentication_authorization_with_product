@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dotnet_test1_authentication_authorization_with_product.Migrations.SqlServer
 {
     [DbContext(typeof(SqlServerDbContext))]
-    [Migration("20260828234838_InitialSqlServerCreate")]
+    [Migration("20260829203828_InitialSqlServerCreate")]
     partial class InitialSqlServerCreate
     {
         /// <inheritdoc />

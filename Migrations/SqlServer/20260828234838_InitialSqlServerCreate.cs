@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Dotnet_test1_authentication_authorization_with_product.Migrations.SqlServer
 {
     /// <inheritdoc />
-    public partial class InitialSqlServer : Migration
+    public partial class InitialSqlServerCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

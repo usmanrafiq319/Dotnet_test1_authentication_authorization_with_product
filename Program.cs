@@ -134,27 +134,43 @@ builder.Services.AddCors(options =>
 // ============================================
 // DATABASE CONFIGURATION (SQL Server local vs PostgreSQL production)
 // ============================================
-builder.Services.AddDbContext<UserDbContext>(options =>
-{
-    var assemblyName = typeof(UserDbContext).Assembly.GetName().Name;
+var connectionString =
+    builder.Configuration.GetConnectionString("UserDatabase");
 
-    if (builder.Environment.IsDevelopment())
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDbContext<SqlServerDbContext>(options =>
     {
         options.UseSqlServer(
-            builder.Configuration.GetConnectionString("UserDatabase"),
-            b => b.MigrationsAssembly(assemblyName)
-                  .MigrationsHistoryTable("__EFMigrationsHistory")
-        );
-    }
-    else
+            connectionString,
+            sqlOptions =>
+            {
+                sqlOptions.MigrationsAssembly(
+                    typeof(SqlServerDbContext).Assembly.GetName().Name);
+            });
+    });
+
+    // Allows your existing services to continue injecting UserDbContext
+    builder.Services.AddScoped<UserDbContext>(sp =>
+        sp.GetRequiredService<SqlServerDbContext>());
+}
+else
+{
+    builder.Services.AddDbContext<PostgresDbContext>(options =>
     {
         options.UseNpgsql(
-            builder.Configuration.GetConnectionString("UserDatabase"),
-            b => b.MigrationsAssembly(assemblyName)
-                  .MigrationsHistoryTable("__EFMigrationsHistory")
-        );
-    }
-});
+            connectionString,
+            postgresOptions =>
+            {
+                postgresOptions.MigrationsAssembly(
+                    typeof(PostgresDbContext).Assembly.GetName().Name);
+            });
+    });
+
+    // Allows your existing services to continue injecting UserDbContext
+    builder.Services.AddScoped<UserDbContext>(sp =>
+        sp.GetRequiredService<PostgresDbContext>());
+}
 
 // ============================================
 // CACHE Storage for otp
@@ -278,11 +294,12 @@ app.MapHub<ChatHub>("/chathub");
 // ============================================
 if (!app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
-        dbContext.Database.Migrate();
-    }
+    using var scope = app.Services.CreateScope();
+
+    var dbContext =
+        scope.ServiceProvider.GetRequiredService<UserDbContext>();
+
+    dbContext.Database.Migrate();
 }
 
 

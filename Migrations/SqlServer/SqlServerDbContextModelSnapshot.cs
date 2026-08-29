@@ -4,19 +4,16 @@ using Dotnet_test1_authentication_authorization_with_product.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
 namespace Dotnet_test1_authentication_authorization_with_product.Migrations.SqlServer
 {
-    [DbContext(typeof(UserDbContext))]
-    [Migration("20260822210758_InitialSqlServer")]
-    partial class InitialSqlServer
+    [DbContext(typeof(SqlServerDbContext))]
+    partial class SqlServerDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

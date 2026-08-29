@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 namespace Dotnet_test1_authentication_authorization_with_product.Data
 {
-    public class UserDbContext( DbContextOptions<UserDbContext> options):DbContext(options)
+    public abstract class UserDbContext(DbContextOptions options) : DbContext(options)
     {
         public DbSet<User> Users { get; set; }
         public DbSet<Product> Products { get; set; }

@@ -262,6 +262,12 @@ builder.Services.Configure<EmailSettings>(
 
 var app = builder.Build();
 
+// 1. MUST BE FIRST: Read headers stripped by Render's proxy
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 // ============================================
 // MIDDLEWARE PIPELINE (Order is critical!)
 // ============================================

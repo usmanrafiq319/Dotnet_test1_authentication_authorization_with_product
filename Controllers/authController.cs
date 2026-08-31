@@ -286,7 +286,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             var Token = await _authService.TokenRequestAsync(refreshToken);
             if(Token is null)
             {
-                return BadRequest($"need to login again refreshtoken {refreshToken}");
+                return BadRequest($"need to login again");
             }
                 // 4. (Optional) Rotate the refresh token for maximum security
              SetRefreshTokenCookie(Token.RefreshToken,Token.RefreshTokenExpiaryTime);
@@ -294,34 +294,39 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         }
 
         [NonAction]
-        private void SetRefreshTokenCookie(string refreshToken, DateTime refreshTokenExpiaryTime)
+        private void SetRefreshTokenCookie(string refreshToken,DateTime refreshTokenExpiryTime)
         {
             var cookieOptions = new CookieOptions
             {
-                HttpOnly = true,                                     // Blocks client-side JavaScript access
-                Secure = true,                                       // Forces cookie over HTTPS connections only
-                SameSite = SameSiteMode.None,                        // Required if Angular & API run on different ports/domains
-                Expires = new DateTimeOffset(refreshTokenExpiaryTime,TimeSpan.Zero)
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = new DateTimeOffset(
+                    refreshTokenExpiryTime,
+                    TimeSpan.Zero
+                ),
+                Path = "/"
             };
 
-            // Appends the token securely to the response headers
-            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+            Response.Cookies.Append(
+                "refreshToken",
+                refreshToken,
+                cookieOptions
+            );
         }
-
-
+       
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            bool validator;
+            bool validator = await ClearUserSessionAsync();
 
-            validator = await ClearUserSessionAsync();
             if (validator is true)
             {
                 return Ok(new { message = "Logged out successfully" });
             }
-            return BadRequest("already logoed out or any issue happen");
-        }
 
+            return BadRequest(new { error = "already logged out or an issue occurred" });
+        }
 
         [NonAction]
         private async Task<bool> ClearUserSessionAsync()
@@ -330,16 +335,15 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
             try
             {
-                // Check for refresh token in cookies
-                if (Request.Cookies.TryGetValue("refreshToken", out string refreshToken) &&
+                // 1. Check for refresh token in cookies
+                if (Request.Cookies.TryGetValue("refreshToken", out string? refreshToken) &&
                     !string.IsNullOrEmpty(refreshToken))
                 {
-                    // Invalidate the refresh token in the database
+                    // 2. Invalidate token in database (Supabase via Auth Service)
                     var logoutResult = await _authService.LogoutAsync(refreshToken);
 
                     if (logoutResult is false)
                     {
-                        // Token was already invalid/expired - log and continue
                         _logger.LogInformation("Refresh token was already invalid or expired");
                         sessionCleared = false;
                     }
@@ -350,18 +354,18 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 }
                 else
                 {
-                    // No token found in cookie
                     _logger.LogInformation("No refresh token found in cookies");
                     sessionCleared = false;
                 }
 
-                // ALWAYS clear the cookie regardless of database result
+                // 3. ALWAYS destroy the browser cookie for cross-origin setups
                 var cookieOptions = new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = true,
                     SameSite = SameSiteMode.None,
-                    Expires = DateTimeOffset.UtcNow.AddDays(-1)
+                    Expires = DateTimeOffset.UtcNow.AddDays(-1), // Forces immediate deletion
+                    Path = "/"                                   // Matches cookie initialization scope
                 };
                 Response.Cookies.Append("refreshToken", "", cookieOptions);
 
@@ -371,7 +375,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             {
                 _logger.LogWarning(ex, "Error occurred while clearing user session");
 
-                // Still try to clear the cookie even if database fails
+                // 4. Fallback execution block to guarantee cookie is dropped on client side
                 try
                 {
                     var cookieOptions = new CookieOptions
@@ -379,7 +383,8 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                         HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.None,
-                        Expires = DateTimeOffset.UtcNow.AddDays(-1)
+                        Expires = DateTimeOffset.UtcNow.AddDays(-1),
+                        Path = "/"
                     };
                     Response.Cookies.Append("refreshToken", "", cookieOptions);
                 }
@@ -388,6 +393,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 return false;
             }
         }
+
         [Authorize(Roles ="Admin")]
         [HttpGet("admin-only")]
         public ActionResult<string> checkAdmin()

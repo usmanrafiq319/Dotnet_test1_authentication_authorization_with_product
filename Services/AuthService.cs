@@ -162,11 +162,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             }
 
             // First verify credentials
-            if (_passwordHasher.VerifyHashedPassword(
-                user,
-                user.PasswordHash,
-                request.Password
-            ) == PasswordVerificationResult.Failed)
+            if (_passwordHasher.VerifyHashedPassword(user,user.PasswordHash,request.Password) == PasswordVerificationResult.Failed)
             {
                 return null;
             }

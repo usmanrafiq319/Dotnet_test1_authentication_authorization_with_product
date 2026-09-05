@@ -266,7 +266,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                 Subject = new ClaimsIdentity(claims),
                 Issuer = _configuration.GetValue<string>("AppSettings:Issuer"),
                 Audience = _configuration.GetValue<string>("AppSettings:Audience"),
-                Expires = DateTime.UtcNow.AddMinutes(1),
+                Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = creds
             };
 

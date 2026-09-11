@@ -71,7 +71,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = saveProduct.Description,
                 Quantity = saveProduct.Quantity,
                 Price = saveProduct.Price,
-                Url = GetProductImageUrl(saveProduct.Id, saveProduct.Url),
+                Url = GetProductImageUrl(saveProduct.Id, saveProduct.Url,saveProduct.ImageVersion),
                 Category = saveProduct.Category,
                 CreatedAt = saveProduct.CreatedAt
             });
@@ -94,7 +94,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = p.Description,
                 Quantity = p.Quantity,
                 Price = p.Price,
-                Url = GetProductImageUrl(p.Id, p.Url),
+                Url = GetProductImageUrl(p.Id, p.Url,p.ImageVersion),
                 Category = p.Category,
                 CreatedAt = p.CreatedAt
 
@@ -120,7 +120,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Description = product.Description,
                 Quantity = product.Quantity,
                 Price = product.Price,
-                Url = GetProductImageUrl(product.Id, product.Url),
+                Url = GetProductImageUrl(product.Id, product.Url,product.ImageVersion),
                 Category = product.Category,
                 CreatedAt = product.CreatedAt
             });
@@ -128,7 +128,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
         // GET: api/product/{id}/image - Streams binary image content directly from Cloudflare R2
         [HttpGet("{id:guid}/image")]
-        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any, NoStore = false)]
+        [ResponseCache(Duration = 2592000, Location = ResponseCacheLocation.Any, NoStore = false)]
         public async Task<IActionResult> GetProductImage(Guid id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -175,6 +175,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                     }
 
                     existingProduct.Url = await _r2ImageService.UploadImageAsync(request.Image, "products");
+                    existingProduct.ImageVersion = +1 ;
                 }
                 catch (ArgumentException ex)
                 {
@@ -202,7 +203,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 Quantity = existingProduct.Quantity,
                 Category = existingProduct.Category,
                 Price = existingProduct.Price,
-                Url = GetProductImageUrl(existingProduct.Id, existingProduct.Url),
+                Url = GetProductImageUrl(existingProduct.Id, existingProduct.Url, existingProduct.ImageVersion),
                 CreatedAt = existingProduct.CreatedAt
             });
         }
@@ -239,17 +240,14 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image";
         }
 
-    //    private string GetProductImageUrl(
-    //Guid productId,
-    //string? imageUrl,
-    //int imageVersion)
-    //    {
-    //        if (string.IsNullOrEmpty(imageUrl))
-    //        {
-    //            return string.Empty;
-    //        }
+        private string GetProductImageUrl(Guid productId,string? imageUrl,int imageVersion)
+        {
+            if (string.IsNullOrEmpty(imageUrl))
+            {
+                return string.Empty;
+            }
 
-    //        return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image?v={imageVersion}";
-    //    }
+            return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image?v={imageVersion}";
+        }
     }
 }

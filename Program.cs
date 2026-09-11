@@ -233,11 +233,9 @@ builder.Services
         {
             OnMessageReceived = context =>
             {
-                var accessToken =
-                    context.Request.Query["access_token"];
+                var accessToken = context.Request.Query["access_token"];
 
-                var path =
-                    context.HttpContext.Request.Path;
+                var path = context.HttpContext.Request.Path;
 
                 if (
                     !string.IsNullOrEmpty(accessToken) &&
@@ -302,8 +300,7 @@ if (!app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
 
-    var dbContext =
-        scope.ServiceProvider.GetRequiredService<UserDbContext>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
 
     dbContext.Database.Migrate();
 }

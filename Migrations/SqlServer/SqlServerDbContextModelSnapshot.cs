@@ -182,6 +182,9 @@ namespace Dotnet_test1_authentication_authorization_with_product.Migrations.SqlS
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("ImageVersion")
+                        .HasColumnType("int");
+
                     b.Property<int>("Price")
                         .HasColumnType("int");
 

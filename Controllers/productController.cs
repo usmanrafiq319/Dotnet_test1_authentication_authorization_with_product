@@ -238,5 +238,18 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             if (string.IsNullOrEmpty(rawUrl)) return string.Empty;
             return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image";
         }
+
+    //    private string GetProductImageUrl(
+    //Guid productId,
+    //string? imageUrl,
+    //int imageVersion)
+    //    {
+    //        if (string.IsNullOrEmpty(imageUrl))
+    //        {
+    //            return string.Empty;
+    //        }
+
+    //        return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image?v={imageVersion}";
+    //    }
     }
 }

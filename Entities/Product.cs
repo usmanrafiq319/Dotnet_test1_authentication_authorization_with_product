@@ -11,6 +11,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Entities
         public int Quantity { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
+        public int ImageVersion { get; set; } = 1;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<CartItem> CartItems { get; set; } = new List<CartItem> ();
 

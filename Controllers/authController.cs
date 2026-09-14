@@ -33,19 +33,17 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
 
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword()
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto  request)
         {
             try
             {
-                Guid userID = GetUserId();
 
-                var email =await _authService.GetEmail(userID);
-                if (string.IsNullOrEmpty(email))
+                if (string.IsNullOrEmpty(request.Email))
                 {
                     return BadRequest(new { message = "Email is required." });
                 }
 
-                var user = await _authService.GetUserByEmailAsync(email);
+                var user = await _authService.GetUserByEmailAsync(request.Email);
                 if (user == null)
                 {
                     // Don't reveal if email exists for security
@@ -74,15 +72,12 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         {
             try
             {
-                Guid userID = GetUserId();
-
-                var Email = await _authService.GetEmail(userID);
-                if (string.IsNullOrEmpty(Email) || string.IsNullOrEmpty(request.Code))
+                if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Code))
                 {
                     return BadRequest(new { message = "Email and OTP code are required." });
                 }
 
-                var user = await _authService.GetUserByEmailAsync(Email);
+                var user = await _authService.GetUserByEmailAsync(request.Email);
                 if (user == null)
                 {
                     return BadRequest(new { message = "User not found." });
@@ -105,6 +100,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 {
                     message = "OTP verified successfully.",
                     resetToken = resetSessionToken,
+                    email = request.Email
                 });
             }
             catch (Exception ex)

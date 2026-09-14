@@ -80,7 +80,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         [HttpGet]
         public async Task<ActionResult<List<ProductDto>>> GetAllProduct()
         {
-            var list = await _context.Products.ToListAsync();
+            var list = await _context.Products.AsNoTracking().ToListAsync();
 
             if (list is null || list.Count == 0)
             {

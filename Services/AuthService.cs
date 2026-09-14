@@ -30,7 +30,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                 return await _context.Users
                     .Include(u => u.Profile)
                     .Include(u => u.Otps)
-                    .FirstOrDefaultAsync(u => u.Profile != null && u.Profile.Email == email);
+                    .FirstOrDefaultAsync(u => u.Profile.Email == email);
             }
             catch (Exception ex)
             {
@@ -89,6 +89,11 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                 _logger.LogError(ex, "Error resetting password for user: {UserId}", userId);
                 return false;
             }
+        }
+        public async Task<string?> GetEmail(Guid userId) {
+
+            var user = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
+            return user.Email;
         }
 
         public async Task<bool> UpdateUserPasswordAsync(Guid userId, string newPassword)

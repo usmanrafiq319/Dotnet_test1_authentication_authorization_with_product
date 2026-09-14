@@ -33,16 +33,19 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
 
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+        public async Task<IActionResult> ForgotPassword()
         {
             try
             {
-                if (string.IsNullOrEmpty(request.Email))
+                Guid userID = GetUserId();
+
+                var email =await _authService.GetEmail(userID);
+                if (string.IsNullOrEmpty(email))
                 {
                     return BadRequest(new { message = "Email is required." });
                 }
 
-                var user = await _authService.GetUserByEmailAsync(request.Email);
+                var user = await _authService.GetUserByEmailAsync(email);
                 if (user == null)
                 {
                     // Don't reveal if email exists for security
@@ -71,12 +74,15 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Code))
+                Guid userID = GetUserId();
+
+                var Email = await _authService.GetEmail(userID);
+                if (string.IsNullOrEmpty(Email) || string.IsNullOrEmpty(request.Code))
                 {
                     return BadRequest(new { message = "Email and OTP code are required." });
                 }
 
-                var user = await _authService.GetUserByEmailAsync(request.Email);
+                var user = await _authService.GetUserByEmailAsync(Email);
                 if (user == null)
                 {
                     return BadRequest(new { message = "User not found." });
@@ -99,7 +105,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 {
                     message = "OTP verified successfully.",
                     resetToken = resetSessionToken,
-                    email = request.Email
                 });
             }
             catch (Exception ex)
@@ -114,7 +119,11 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(request.Email) ||
+                Guid userID = GetUserId();
+
+                var Email = await _authService.GetEmail(userID);
+
+                if (string.IsNullOrEmpty(Email) ||
                     string.IsNullOrEmpty(request.ResetToken) ||
                     string.IsNullOrEmpty(request.NewPassword))
                 {
@@ -129,7 +138,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 }
 
                 // Verify the user matches the email
-                var user = await _authService.GetUserByEmailAsync(request.Email);
+                var user = await _authService.GetUserByEmailAsync(Email);
                 if (user == null || user.Id != userId)
                 {
                     return BadRequest(new { message = "User mismatch." });
@@ -254,12 +263,12 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             return Ok(accesstoken);
         }
 
-
+         
         [Authorize]
         [HttpGet("user-id")]
         public IActionResult GetId()
         {
-            Guid UserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            Guid UserId = GetUserId();
             return Ok(UserId);
 
         }
@@ -394,6 +403,11 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             }
         }
 
+        [NonAction]
+        private Guid GetUserId()
+        {
+            return Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        }   
         [Authorize(Roles ="Admin")]
         [HttpGet("admin-only")]
         public ActionResult<string> checkAdmin()

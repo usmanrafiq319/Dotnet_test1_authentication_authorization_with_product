@@ -13,6 +13,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
 
         // NEW: Password Reset Methods (using OTP)
         Task<User?> GetUserByEmailAsync(string email);
+        Task<string?> GetEmail(Guid userId);
         Task<User?> GetUserByIdAsync(Guid userId);
         Task<bool> ResetPasswordAsync(Guid userId, string newPassword);
         Task<bool> UpdateUserPasswordAsync(Guid userId, string newPassword);

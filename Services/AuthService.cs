@@ -30,7 +30,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                 return await _context.Users
                     .Include(u => u.Profile)
                     .Include(u => u.Otps)
-                    .FirstOrDefaultAsync(u => u.Profile.Email == email);
+                    .FirstOrDefaultAsync(u => u.Profile != null && u.Profile.Email == email);
             }
             catch (Exception ex)
             {

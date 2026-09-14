@@ -119,11 +119,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         {
             try
             {
-                Guid userID = GetUserId();
-
-                var Email = await _authService.GetEmail(userID);
-
-                if (string.IsNullOrEmpty(Email) ||
+                if (string.IsNullOrEmpty(request.Email) ||
                     string.IsNullOrEmpty(request.ResetToken) ||
                     string.IsNullOrEmpty(request.NewPassword))
                 {
@@ -138,7 +134,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 }
 
                 // Verify the user matches the email
-                var user = await _authService.GetUserByEmailAsync(Email);
+                var user = await _authService.GetUserByEmailAsync(request.Email);
                 if (user == null || user.Id != userId)
                 {
                     return BadRequest(new { message = "User mismatch." });

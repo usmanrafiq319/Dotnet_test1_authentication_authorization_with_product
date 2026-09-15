@@ -29,32 +29,68 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         private readonly ILogger<authController> _logger = logger;
         private readonly IMemoryCache _cache = cache;
 
-        // ... Your existing endpoints (Register, Login, TokenRequest, Logout) ...
 
+        //[HttpGet("test-email")]
+        //public async Task<IActionResult> TestEmailSender([FromServices] IEmailService emailService)
+        //{
+        //    const string targetEmail = "usmarafiq319@gmail.com";
+        //    string testCode = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+
+        //    string subject = $"Test OTP Email - {testCode}";
+        //    string body = $@"
+        //<h2>Email Sender Test</h2>
+        //<p>Your test code is: <strong>{testCode}</strong></p>
+        //<p>Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</p>";
+
+        //    try
+        //    {
+        //        await emailService.SendEmailAsync(targetEmail, subject, body);
+        //        return Ok(new
+        //        {
+        //            status = "Success",
+        //            message = $"Test email sent to {targetEmail}",
+        //            codeSent = testCode
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new
+        //        {
+        //            status = "Failed",
+        //            error = ex.Message,
+        //            innerError = ex.InnerException?.Message
+        //        });
+        //    }
+        //}
 
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto  request)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
             try
             {
-
-                if (string.IsNullOrEmpty(request.Email))
+                if (request == null || string.IsNullOrWhiteSpace(request.Email))
                 {
                     return BadRequest(new { message = "Email is required." });
                 }
 
                 var user = await _authService.GetUserByEmailAsync(request.Email);
+
+                // Returns 400 Bad Request if no profile matches the email in DB
                 if (user == null)
                 {
-                    // Don't reveal if email exists for security
-                    return Ok(new { message = "If the email exists, you will receive an OTP." });
+                    return BadRequest(new { message = "User does not exist." });
                 }
 
+                // Generate and send OTP now that user is verified
                 var result = await _otpService.GenerateAndSendOtpAsync(user.Id, OtpPurpose.PasswordReset);
 
                 if (!result.IsSuccess)
                 {
-                    return StatusCode(500, new { message = "Failed to generate OTP. Please try again." });
+                    return StatusCode(500, new
+                    {
+                        message = "Failed to generate OTP. Please try again.",
+                        error = result.Message
+                    });
                 }
 
                 return Ok(new { message = "OTP sent to your email address." });
@@ -65,7 +101,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                 return StatusCode(500, new { message = "An error occurred." });
             }
         }
-
 
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
@@ -207,19 +242,45 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
 
         // ... Your existing endpoints (Register, Login, AccessToken, Logout, TestEmail) ...
-
         [HttpPost("test-email")]
-        public async Task<IActionResult> TestEmail()
+        public async Task<IActionResult> TestEmail([FromBody] TestEmailRequestDto? request)
         {
-            await _emailService.SendEmailAsync(
-                "usmanrafiqghani@gmail.com",
-                "Test Email",
-                "<h2>Email service is working!</h2>");
+            // Fall back to a default test email if no body payload is provided
+            string recipient = !string.IsNullOrWhiteSpace(request?.Email)
+                ? request.Email
+                : "usmanrafiq319@gmail.com";
 
-            return Ok();
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    recipient,
+                    $"Test Email - {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC",
+                    "<h2>Email service is working!</h2><p>This confirms your SMTP settings are correct.</p>"
+                );
+
+                return Ok(new
+                {
+                    status = "Success",
+                    message = $"Test email sent successfully to {recipient}"
+                });
+            }
+            catch (Exception ex)
+            {
+                // Catches SMTP authentication, network connection, or config errors
+                return StatusCode(500, new
+                {
+                    status = "Failed",
+                    message = "Email service encountered an error.",
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message
+                });
+            }
         }
 
-
+        public class TestEmailRequestDto
+        {
+            public string? Email { get; set; }
+        }
         [HttpPost("register")]
         public async Task<ActionResult<AccessTokenDto?>> Register(RegisterDto request)
         {

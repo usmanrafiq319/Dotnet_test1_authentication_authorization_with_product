@@ -134,43 +134,18 @@ builder.Services.AddCors(options =>
 // ============================================
 // DATABASE CONFIGURATION (SQL Server local vs PostgreSQL production)
 // ============================================
-var connectionString =
-    builder.Configuration.GetConnectionString("UserDatabase");
 
-if (builder.Environment.IsDevelopment())
+// Read the PostgreSQL connection string from configuration
+var connectionString = builder.Configuration.GetConnectionString("UserDatabase");
+
+// Register UserDbContext using Npgsql
+builder.Services.AddDbContext<UserDbContext, PostgresDbContext>(options =>
 {
-    builder.Services.AddDbContext<SqlServerDbContext>(options =>
-    {
-        options.UseSqlServer(
-            connectionString,
-            sqlOptions =>
-            {
-                sqlOptions.MigrationsAssembly(
-                    typeof(SqlServerDbContext).Assembly.GetName().Name);
-            });
-    });
+    options.UseNpgsql(connectionString);
+});
 
-    // Allows your existing services to continue injecting UserDbContext
-    builder.Services.AddScoped<UserDbContext>(sp =>
-        sp.GetRequiredService<SqlServerDbContext>());
-}
-else
-{
-    builder.Services.AddDbContext<PostgresDbContext>(options =>
-    {
-        options.UseNpgsql(
-            connectionString,
-            postgresOptions =>
-            {
-                postgresOptions.MigrationsAssembly(
-                    typeof(PostgresDbContext).Assembly.GetName().Name);
-            });
-    });
-
-    // Allows your existing services to continue injecting UserDbContext
-    builder.Services.AddScoped<UserDbContext>(sp =>
-        sp.GetRequiredService<PostgresDbContext>());
-}
+// If you have a generic interface or alias registered for DI, update it here:
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<PostgresDbContext>());
 
 // ============================================
 // CACHE Storage for otp
@@ -299,9 +274,7 @@ app.MapHub<ChatHub>("/chathub");
 if (!app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-
-    var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
-
+    var dbContext = scope.ServiceProvider.GetRequiredService<PostgresDbContext>();
     dbContext.Database.Migrate();
 }
 

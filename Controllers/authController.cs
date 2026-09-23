@@ -305,7 +305,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             var token = await _authService.LoginUserAsync(request);
             if (token is null)
             {
-                return Unauthorized("Refresh token expired or user don't exists or token mismatch"); 
+                return Unauthorized("User Name Or Password Is Wrong"); 
             }
 
             SetRefreshTokenCookie(token.RefreshToken,token.RefreshTokenExpiaryTime);

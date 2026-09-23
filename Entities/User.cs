@@ -15,6 +15,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Entities
 
         // Navigation properties
         public ICollection<Otp> Otps { get; set; } = new List<Otp>();
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
 
         // One support conversation for a normal user.
         public Conversation? Conversation { get; set; }

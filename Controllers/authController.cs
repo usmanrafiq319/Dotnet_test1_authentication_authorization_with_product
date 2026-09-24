@@ -20,9 +20,10 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class authController( IAuthService authService, IEmailService emailService, IOtpService otpService, ILogger<authController> logger, IMemoryCache cache) : ControllerBase
+    public class authController( IAuthService authService, IEmailService emailService, IOtpService otpService, ILogger<authController> logger, IMemoryCache cache, IUserContext userContext) : ControllerBase
 
     {
+        private readonly IUserContext _userContext = userContext;
         private readonly IAuthService _authService = authService;
         private readonly IEmailService _emailService = emailService;
         private readonly IOtpService _otpService = otpService;

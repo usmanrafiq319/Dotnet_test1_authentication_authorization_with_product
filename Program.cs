@@ -52,6 +52,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IR2ImageService, R2ImageService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddHttpContextAccessor(); // Required for _httpContextAccessor to work
+builder.Services.AddScoped<IUserContext, UserContext>(); // Required to use it in Controllers
 //builder.Services.AddScoped<IGroqChatService, GroqChatService>();
 builder.Services.AddSignalR();
 

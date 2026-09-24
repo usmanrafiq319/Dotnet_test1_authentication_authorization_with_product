@@ -9,10 +9,13 @@ namespace Dotnet_test1_authentication_authorization_with_product.Data
     {
         public PostgresDbContext CreateDbContext(string[] args)
         {
+  
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-                .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
+                // 1. Make appsettings optional so it doesn't crash if missing
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                // 2. Target this specific class assembly to reliably find the UserSecretsId
+                .AddUserSecrets<PostgresDbContextFactory>(optional: false)
                 .AddEnvironmentVariables()
                 .Build();
 

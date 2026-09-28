@@ -172,6 +172,29 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
             }
         }
 
+        public async Task<R2ImageResponseDto> GetImageStreamAsync(string imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(imageUrl))
+                throw new ArgumentException("Image URL or key cannot be empty.");
+
+            var key = ExtractObjectKey(imageUrl);
+
+            try
+            {
+                var response = await _s3Client.GetObjectAsync(_options.BucketName, key);
+
+                return new R2ImageResponseDto
+                {
+                    // Pass live network stream directly (no CopyToAsync)
+                    Stream = response.ResponseStream,
+                    ContentType = response.Headers.ContentType ?? "image/jpeg"
+                };
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new FileNotFoundException($"Image not found: {imageUrl}");
+            }
+        }
         public async Task<bool> DeleteImageAsync(string imageUrl)
         {
             try

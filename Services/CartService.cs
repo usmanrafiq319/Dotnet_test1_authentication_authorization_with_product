@@ -89,7 +89,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                     ProductId = ci.ProductId,
                     Title = ci.Product.Title,
                     Price = ci.Product.Price,
-                    Url=ci.Product.Url,
                     Quantity = ci.Quantity,
                 }
                 ).ToList(),
@@ -110,7 +109,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Services
                     ProductId = ci.ProductId,
                     Title = ci.Product.Title,
                     Price = ci.Product.Price,
-                    Url = ci.Product.Url,
                     Quantity = ci.Quantity,
                 }
     ).ToList(),

@@ -23,7 +23,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
         //[Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<ActionResult<ProductDto>> CreatProduct(CreateProductDto request)
+        public async Task<ActionResult<ProductDto>> CreatProduct([FromForm] CreateProductDto request)
         {
             if (await _context.Products.AnyAsync(item => item.Title == request.Title))
             {
@@ -175,7 +175,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                     }
 
                     existingProduct.Url = await _r2ImageService.UploadImageAsync(request.Image, "products");
-                    existingProduct.ImageVersion = +1 ;
+                    existingProduct.ImageVersion++ ;
                 }
                 catch (ArgumentException ex)
                 {
@@ -208,7 +208,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
             });
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")] 
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
@@ -234,11 +234,11 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         /// <summary>
         /// Returns the internal API streaming URL if present, or empty string.
         /// </summary>
-        private string GetProductImageUrl(Guid productId, string rawUrl)
-        {
-            if (string.IsNullOrEmpty(rawUrl)) return string.Empty;
-            return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image";
-        }
+        //private string GetProductImageUrl(Guid productId, string rawUrl)
+        //{
+        //    if (string.IsNullOrEmpty(rawUrl)) return string.Empty;
+        //    return $"{Request.Scheme}://{Request.Host}/api/product/{productId}/image";
+        //}
 
         private string GetProductImageUrl(Guid productId,string? imageUrl,int imageVersion)
         {

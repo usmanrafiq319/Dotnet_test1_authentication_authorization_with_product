@@ -24,8 +24,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
         [HttpPost]
         public async Task<ActionResult<CreateOrderResponseDto>> CreateOrder()
         {
-            var userIdClaim =
-                User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (!Guid.TryParse(userIdClaim, out Guid userId))
             {
@@ -105,7 +104,6 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
                     var orderItem = new OrderItem
                     {
 
-                        OrderId = order.Id,
 
                         ProductId = cartItem.ProductId,
 
@@ -116,8 +114,7 @@ namespace Dotnet_test1_authentication_authorization_with_product.Controllers
 
                     order.OrderItems.Add(orderItem);
 
-                    totalAmount +=
-                        (decimal)cartItem.Price * cartItem.Quantity;
+                    totalAmount += (decimal)cartItem.Price * cartItem.Quantity;
                 }
 
                 order.TotalAmount = totalAmount;
